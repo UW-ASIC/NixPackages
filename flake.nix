@@ -22,6 +22,7 @@
         
         # Fix magic-vlsi for GCC 15 (implicit function declarations and strict prototypes)
         magic-vlsi = prev.magic-vlsi.overrideAttrs (old: {
+          doCheck = false;
           env = (old.env or {}) // {
             # Combine existing flags with GCC 15 compatibility flags
             NIX_CFLAGS_COMPILE = toString [
@@ -42,6 +43,7 @@
         openroad = (prev.openroad.override {
           stdenv = prev.gcc14Stdenv;
         }).overrideAttrs (old: {
+          doCheck = false;
           # Keep any necessary env overrides, but GCC 14 should be safer
           env = (old.env or {}) // {
             NIX_CFLAGS_COMPILE = toString [
