@@ -1,0 +1,66 @@
+name: Build and Push to Cachix
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+  schedule:
+    # Run weekly on Mondays at 2 AM UTC to keep cache fresh
+    - cron: "0 2 * * 1"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Install Nix
+        uses: cachix/install-nix-action@v26
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: 🔐 Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: uwasic-eda
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          skipPush: true # We'll push manually via the script
+
+      - name: 📦 Install jq (for JSON parsing)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: 📝 Create .env file
+        run: |
+          echo "AUTH_TOKEN=${{ secrets.CACHIX_AUTH_TOKEN }}" > .env
+          echo "✅ .env file created"
+
+      - name: 🚀 Run PUSH_CACHIX.sh script
+        run: |
+          chmod +x ./PUSH_CACHIX.sh
+          ./PUSH_CACHIX.sh
+
+      - name: 📊 Upload build summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cache:** uwasic-eda" >> $GITHUB_STEP_SUMMARY
+          echo "- **Packages:** ngspice-shared, netgen, xschem, klayout" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Users can access with:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "cachix use uwasic-eda" >> $GITHUB_STEP_SUMMARY
+          echo "nix build github:UW-ASIC/NixPackages#xschem" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
