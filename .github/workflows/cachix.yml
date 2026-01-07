@@ -125,17 +125,17 @@ jobs:
           echo "cachix use ${{ env.CACHIX_CACHE }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Install a specific package" >> $GITHUB_STEP_SUMMARY
-          echo "nix profile install github:UWASIC/uwasic-eda-packages#xschem" >> $GITHUB_STEP_SUMMARY
+          echo "nix profile install github:UW-ASIC/NixPackages#xschem" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Or run directly without installing" >> $GITHUB_STEP_SUMMARY
-          echo "nix run github:UWASIC/uwasic-eda-packages#xschem" >> $GITHUB_STEP_SUMMARY
+          echo "nix run github:UW-ASIC/NixPackages#xschem" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "#### Build All Packages" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "# Build the default (all packages)" >> $GITHUB_STEP_SUMMARY
-          echo "nix build github:UWASIC/uwasic-eda-packages" >> $GITHUB_STEP_SUMMARY
+          echo "nix build github:UW-ASIC/NixPackages" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
