@@ -1,48 +1,74 @@
 {
   description = "UWASIC EDA Tools with GCC 15 compatibility patches";
-
+  
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
-
+  
   outputs = { self, nixpkgs, flake-utils }:
+    let
+      # Overlay to fix GCC 15 compatibility issues
+      gcc15CompatOverlay = final: prev: {
+        # Fix criterion for GCC 15 (missing <cstdint>)
+        criterion = prev.criterion.overrideAttrs (old: {
+          postPatch = (old.postPatch or "") + ''
+            # Add #include <stdint.h> for SIZE_MAX declaration (C compatible)
+            if [ -f include/criterion/alloc.h ]; then
+              sed -i '38a #include <stdint.h>' include/criterion/alloc.h
+            fi
+          '';
+        });
+        
+        # Fix magic-vlsi for GCC 15 (implicit function declarations and strict prototypes)
+        magic-vlsi = prev.magic-vlsi.overrideAttrs (old: {
+          env = (old.env or {}) // {
+            # Combine existing flags with GCC 15 compatibility flags
+            NIX_CFLAGS_COMPILE = toString [
+              (old.env.NIX_CFLAGS_COMPILE or "")
+              "-Wno-implicit-function-declaration"
+              "-Wno-strict-prototypes"
+              "-std=gnu11"  # Use C11 instead of C89 for better compatibility
+            ];
+          };
+          
+          # Additional configure flags to disable errors
+          configureFlags = (old.configureFlags or []) ++ [
+            "--disable-werror"
+          ];
+        });
+        
+        # Use GCC 14 for OpenROAD to avoid GCC 15 regressions
+        openroad = (prev.openroad.override {
+          stdenv = prev.gcc14Stdenv;
+        }).overrideAttrs (old: {
+          # Keep any necessary env overrides, but GCC 14 should be safer
+          env = (old.env or {}) // {
+            NIX_CFLAGS_COMPILE = toString [
+              (old.env.NIX_CFLAGS_COMPILE or "")
+              "-Wno-error=implicit-function-declaration"
+            ];
+          };
+        });
+      };
+    in
     flake-utils.lib.eachDefaultSystem (system:
       let
-        # Overlay to fix GCC 15 compatibility issues
-        criterionOverlay = final: prev: {
-          # Patch criterion to add missing #include <cstdint> for GCC 15 compatibility
-          # This fixes SIZE_MAX not being declared in include/criterion/alloc.h
-          criterion = prev.criterion.overrideAttrs (old: {
-            postPatch = (old.postPatch or "") + ''
-              # Add #include <cstdint> after line 38 in alloc.h to fix GCC 15 build
-              if [ -f include/criterion/alloc.h ]; then
-                sed -i '38a #include <cstdint>' include/criterion/alloc.h
-              fi
-            '';
-          });
-        };
-
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ criterionOverlay ];
+          overlays = [ gcc15CompatOverlay ];
           config = {
             allowUnfree = true;
           };
         };
-
+        
         # EDA packages to build and cache
         edaPackages = {
           inherit (pkgs)
             openroad
-            magic-vlsi
-            yosys
-            verilator
-            klayout;
-          # cocotb is a Python package
-          cocotb = pkgs.python3Packages.cocotb;
+            magic-vlsi;
         };
-
+        
       in {
         # Export individual packages
         packages = edaPackages // {
@@ -51,7 +77,7 @@
             paths = builtins.attrValues edaPackages;
           };
         };
-
+        
         # Development shell with all EDA tools
         devShells.default = pkgs.mkShell {
           name = "uwasic-eda-shell";
@@ -60,31 +86,23 @@
             pkgs.git
             pkgs.gnumake
           ];
-
+          
           shellHook = ''
             echo "🔧 UWASIC EDA Tools Environment"
-            echo "Available tools: openroad, magic, yosys, cocotb, verilator, klayout"
+            echo "Available tools: openroad, magic"
+            echo ""
+            echo "📦 Cached packages available from: ${pkgs.lib.optionalString (builtins.getEnv "CACHIX_CACHE" != "") "cachix use uwasic-eda"}"
           '';
         };
-
+        
         # Apps for easy running
         apps = {
           openroad = flake-utils.lib.mkApp { drv = pkgs.openroad; };
           magic = flake-utils.lib.mkApp { drv = pkgs.magic-vlsi; exePath = "/bin/magic"; };
-          yosys = flake-utils.lib.mkApp { drv = pkgs.yosys; };
-          klayout = flake-utils.lib.mkApp { drv = pkgs.klayout; };
         };
       }
     ) // {
       # Export the overlay for use in other flakes
-      overlays.default = final: prev: {
-        criterion = prev.criterion.overrideAttrs (old: {
-          postPatch = (old.postPatch or "") + ''
-            if [ -f include/criterion/alloc.h ]; then
-              sed -i '38a #include <cstdint>' include/criterion/alloc.h
-            fi
-          '';
-        });
-      };
+      overlays.default = gcc15CompatOverlay;
     };
 }
