@@ -56,7 +56,7 @@ jobs:
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Cache:** uwasic-eda" >> $GITHUB_STEP_SUMMARY
-          echo "- **Packages:** ngspice-shared, netgen, xschem, klayout" >> $GITHUB_STEP_SUMMARY
+          echo "- **Packages:** ngspice-shared, netgen, xschem, klayout, pyspice, openvaf, vacask, xyce" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Users can access with:" >> $GITHUB_STEP_SUMMARY

@@ -35,6 +35,10 @@ PACKAGES=(
     "netgen"
     "xschem"
     "klayout"
+    "pyspice"
+    "openvaf"
+    "vacask"
+    "xyce"
 )
 
 echo ""

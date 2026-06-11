@@ -4,6 +4,19 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    pyspice = {
+      url = "github:OmarSiwy/PySpice";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+
+    schemify = {
+      url = "github:UW-ASIC/Schemify/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.pyspice.follows = "pyspice";
+    };
   };
 
   outputs =
@@ -11,6 +24,8 @@
       self,
       nixpkgs,
       flake-utils,
+      pyspice,
+      schemify,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -22,8 +37,14 @@
           };
         };
 
+        pyspicePackages = pyspice.packages.${system};
+
+        # Builder for PySpice with a custom simulator selection (at least one).
+        # Usage: lib.<system>.mkPySpice { simulators = [ "ngspice" "xyce" ]; }
+        mkPySpice = import ./packages/pyspice.nix { inherit pkgs pyspicePackages; };
+
         # Import all package definitions
-        packageDefs = import ./packages { inherit pkgs; };
+        packageDefs = import ./packages { inherit pkgs pyspicePackages mkPySpice; };
 
       in
       {
@@ -45,9 +66,19 @@
           };
         };
 
+        # Dev shells
+        devShells = {
+          # Schemify development environment (re-exported from UW-ASIC/Schemify master)
+          schemify = schemify.devShells.${system}.default;
+        };
+
+        # Library functions
+        lib = {
+          inherit mkPySpice;
+        };
+
         # Formatter for `nix fmt`
         formatter = pkgs.nixpkgs-fmt;
       }
     );
 }
-
