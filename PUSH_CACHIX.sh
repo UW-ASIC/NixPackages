@@ -50,8 +50,18 @@ for package in "${PACKAGES[@]}"; do
     echo "📦 Building: $package"
     echo "----------------------------------------------"
 
-    # Build the package
-    if nix build ".#$package" --print-build-logs; then
+    # Build the package (retry: crates.io intermittently 403s cargo-vendor fetches)
+    built=false
+    for attempt in 1 2 3; do
+        if nix build ".#$package" --print-build-logs; then
+            built=true
+            break
+        fi
+        echo "⚠️  Build attempt $attempt failed for $package, retrying in 15s..."
+        sleep 15
+    done
+
+    if $built; then
         echo "✅ Built: $package"
 
         # Push to Cachix
